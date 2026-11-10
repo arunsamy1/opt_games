@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dune Buggy</title>
+<style>
+  :root { --chrome: 44px; --bg: #0e1013; --fg: #e7e3da; --dim: #8b8781; --accent: #d8963f; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+  #app { display: flex; flex-direction: column; height: 100%; }
+  #bar { height: var(--chrome); flex: 0 0 auto; display: flex; align-items: center; gap: 14px;
+    padding: 0 14px; background: #15181c; border-bottom: 1px solid #23272c; user-select: none; }
+  #bar h1 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: .02em; }
+  #bar h1 span { color: var(--accent); }
+  #hint { color: var(--dim); font-size: 12.5px; margin-left: auto; }
+  button { font: inherit; font-size: 13px; color: var(--fg); background: #22262b;
+    border: 1px solid #32373d; border-radius: 6px; padding: 5px 12px; cursor: pointer; }
+  button:hover { background: #2b3036; border-color: #434a52; }
+  button:active { transform: translateY(1px); }
+  #stage { flex: 1 1 auto; min-height: 0; position: relative; background: #000; }
+  ruffle-player { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #msg { position: absolute; inset: 0; display: none; flex-direction: column; gap: 10px;
+    align-items: center; justify-content: center; text-align: center; padding: 30px; }
+  #msg.show { display: flex; }
+  #msg code { background: #1c2026; border: 1px solid #2d3238; border-radius: 5px;
+    padding: 3px 8px; font-size: 13px; color: var(--accent); }
+  #app:fullscreen #bar, #app:-webkit-full-screen #bar { display: none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="bar">
+    <h1>Dune <span>Buggy</span></h1>
+    <button id="fs">Fullscreen</button>
+    <button id="reload">Restart</button>
+    <span id="hint">Click the game first, then use the arrow keys &middot; Esc leaves fullscreen</span>
+  </div>
+  <div id="stage">
+    <div id="msg"></div>
+  </div>
+</div>
+
+<script>
+  window.RufflePlayer = window.RufflePlayer || {};
+  window.RufflePlayer.config = {
+    autoplay: "on",
+    unmuteOverlay: "hidden",
+    letterbox: "on",
+    scale: "showAll",
+    quality: "high",
+    contextMenu: "on",          // Ruffle's own menu also has a fullscreen entry
+    allowNetworking: "none",    // fully offline: blocks the game's old ad/leaderboard calls
+    warnOnUnsupportedContent: false,
+    splashScreen: true
+  };
+
+  function fail(html) {
+    var m = document.getElementById("msg");
+    m.innerHTML = html;
+    m.classList.add("show");
+  }
+
+  if (location.protocol === "file:") {
+    fail('<strong>Open this through the local server, not as a file.</strong>' +
+         '<div>Browsers refuse to load Ruffle’s WebAssembly over <code>file://</code>.</div>' +
+         '<div>Run <code>./play.sh</code> in this folder instead.</div>');
+  }
+</script>
+<script src="ruffle/ruffle.js"></script>
+<script>
+  var player = null;
+  var stage = document.getElementById("stage");
+
+  function boot() {
+    if (location.protocol === "file:") return;
+    if (!window.RufflePlayer || !window.RufflePlayer.newest) {
+      fail('<strong>Ruffle failed to load.</strong><div>Check that the <code>ruffle/</code> folder sits next to this page.</div>');
+      return;
+    }
+    if (player) player.remove();
+    player = window.RufflePlayer.newest().createPlayer();
+    stage.appendChild(player);
+    player.load({ url: "game/dunebuggy.swf" }).catch(function (e) {
+      fail('<strong>Could not load the game.</strong><div><code>game/dunebuggy.swf</code> is missing or unreadable.</div>');
+      console.error(e);
+    });
+    // give the SWF keyboard focus straight away
+    setTimeout(function () { try { player.focus(); } catch (e) {} }, 400);
+  }
+
+  var app = document.getElementById("app");
+  function toggleFullscreen() {
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    } else {
+      (app.requestFullscreen || app.webkitRequestFullscreen).call(app);
+    }
+    setTimeout(function () { try { player && player.focus(); } catch (e) {} }, 100);
+  }
+
+  document.getElementById("fs").addEventListener("click", toggleFullscreen);
+  document.getElementById("reload").addEventListener("click", boot);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "f" || e.key === "F") toggleFullscreen();
+  }, true);
+
+  if (document.readyState === "complete") boot();
+  else window.addEventListener("load", boot);
+</script>
+</body>
+</html>
